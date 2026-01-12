@@ -27,6 +27,10 @@
 - [Contributing](#contributing)
 - [License](#license)
 - [Citation](#citation)
+- [Configuration](#configuration)
+- [Custom Datasets](docs/CUSTOM_DATASETS.md)  <!-- ADD -->
+- [Advanced Configuration](docs/CONFIGURATION_GUIDE.md)  <!-- ADD -->
+- [Results & Analysis](#results--analysis)
 
 ---
 
@@ -592,6 +596,12 @@ pip install -r requirements.txt
 **Visualization:**
 - matplotlib >= 3.4.0
 - seaborn >= 0.11.0
+
+**Documentation:**
+
+- **[Configuration Guide](docs/CONFIGURATION_GUIDE.md)** - Customize GA parameters, mutation, selection
+- **[Custom Datasets Guide](docs/CUSTOM_DATASETS.md)** - Add your own datasets
+- **[Kaggle Setup](docs/KAGGLE_SETUP.md)** - Configure Kaggle API for dataset downloads
 
 ---
 
