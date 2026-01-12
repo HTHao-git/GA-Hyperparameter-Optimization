@@ -8,35 +8,35 @@ This document explains how to set up Kaggle API credentials for downloading data
 
 ## Authentication Methods
 
-### Method 1: Token-Based (NEW - Recommended) ✨
+### Method 1: Token-Based (NEW - Recommended)
 
 **Pros:**
-- ✅ Simpler setup
-- ✅ No files to manage
-- ✅ Easy to rotate/revoke
-- ✅ Works across multiple projects
+- Simpler setup
+- No files to manage
+- Easy to rotate/revoke
+- Works across multiple projects
 
 **Cons:**
-- ⚠️ Need to set environment variable
-- ⚠️ May need to restart terminal/IDE
+- Need to set environment variable
+- May need to restart terminal/IDE
 
 ---
 
 ### Method 2: Legacy kaggle.json File (OLD)
 
 **Pros:**
-- ✅ Persistent (no env vars needed)
-- ✅ Works with older Kaggle API versions
+- Persistent (no env vars needed)
+- Works with older Kaggle API versions
 
 **Cons:**
-- ⚠️ File-based (must protect from accidental commits)
-- ⚠️ Less convenient to rotate
+- File-based (must protect from accidental commits)
+- Less convenient to rotate
 
 ---
 
 ## Setup Instructions
 
-### 🆕 Method 1: Token-Based Authentication
+### Method 1: Token-Based Authentication
 
 #### Step 1: Get Your Token
 
@@ -106,7 +106,7 @@ python test_kaggle_setup.py
 
 ---
 
-### 📜 Method 2: Legacy kaggle.json File
+### Method 2: Legacy kaggle.json File
 
 #### Step 1: Get kaggle.json
 
@@ -147,7 +147,7 @@ chmod 600 ~/.kaggle/kaggle.json
 kaggle datasets list
 ```
 
-If you see a list of datasets, you're set!  ✅
+If you see a list of datasets, you're set!
 
 ---
 
@@ -155,16 +155,16 @@ If you see a list of datasets, you're set!  ✅
 
 ### For Token Method: 
 
-- ✅ Never commit tokens to Git
-- ✅ Use environment variables (not hardcoded in code)
-- ✅ Rotate tokens periodically
-- ✅ Revoke tokens if exposed
+- Never commit tokens to Git
+- Use environment variables (not hardcoded in code)
+- Rotate tokens periodically
+- Revoke tokens if exposed
 
 ### For Legacy Method:
 
-- ✅ `.gitignore` excludes `kaggle.json` and `.kaggle/` directory
-- ✅ Never commit `kaggle.json` to Git
-- ✅ Treat it like a password
+- `.gitignore` excludes `kaggle.json` and `.kaggle/` directory
+- Never commit `kaggle.json` to Git
+- Treat it like a password
 
 ---
 
@@ -243,7 +243,7 @@ If you don't want to use Kaggle:
 
 ## Privacy Checklist
 
-- ✅ `.gitignore` excludes sensitive files
-- ✅ Never share tokens/keys
-- ✅ Use environment variables (not hardcoded)
-- ✅ Rotate credentials if exposed
+- `.gitignore` excludes sensitive files
+- Never share tokens/keys
+- Use environment variables (not hardcoded)
+- Rotate credentials if exposed
