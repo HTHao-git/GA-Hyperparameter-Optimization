@@ -1,0 +1,214 @@
+# ============================================================================
+# . gitignore for Hyperparameter Optimization Project
+# ============================================================================
+
+# ============================================================================
+# PYTHON
+# ============================================================================
+
+# Virtual environment
+venv/
+env/
+ENV/
+*.venv
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# ============================================================================
+# PROJECT-SPECIFIC
+# ============================================================================
+
+# Outputs folder (contains experiment results)
+outputs/*/
+
+# Datasets (don't commit large files)
+datasets/isolet/*
+datasets/fashion_mnist/*
+datasets/secom/*
+datasets/steel_plates/*
+datasets/custom/*
+
+# Keep . gitkeep files
+! datasets/*/.gitkeep
+!outputs/.gitkeep
+
+# Logs
+*.log
+
+# Checkpoints (can be large)
+*.pkl
+*.h5
+*.pt
+*.pth
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# ============================================================================
+# OS-SPECIFIC
+# ============================================================================
+
+# Windows
+Thumbs. db
+desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# ============================================================================
+# IDE / EDITOR
+# ============================================================================
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================================
+# TESTING
+# ============================================================================
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ============================================================================
+# KAGGLE API CREDENTIALS
+# ============================================================================
+
+# Kaggle API token (NEVER commit this!)
+kaggle.json
+.kaggle/
+**/.kaggle/
+
+# User-specific Kaggle credentials anywhere in project
+**/kaggle.json
+
+# ============================================================================
+# OTHER SENSITIVE DATA
+# ============================================================================
+
+# Environment variables (if you create a .env file later)
+.env
+.env.local
+.env.*.local
+
+# API keys and secrets
+*.key
+*.pem
+*.cert
+secrets.json
+credentials.json
+
+# User-specific config (in case you add personal settings)
+config/user_config.yaml
+config/local_*.yaml
+
+# ============================================================================
+# DOWNLOADED DATASETS (Optional - keep datasets out of Git)
+# ============================================================================
+
+# Uncomment these if you don't want to commit downloaded datasets
+# datasets/isolet/*
+# datasets/fashion_mnist/*
+# datasets/secom/*
+# datasets/steel_plates/*
+# datasets/custom/*
+
+# But keep the .gitkeep files
+! datasets/*/.gitkeep
+! datasets/custom/.gitkeep
+
+# ============================================================================
+# LARGE FILES (prevent accidental commits of big files)
+# ============================================================================
+
+# Large data files
+*.npz
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.joblib
+
+# Model checkpoints (can be very large)
+*.ckpt
+*.pth
+*.weights
+
+# Compressed datasets
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.rar
+
+# ============================================================================
+# JUPYTER NOTEBOOK OUTPUTS (if you add notebooks later)
+# ============================================================================
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Jupyter output files
+*-checkpoint.ipynb
+
+# ============================================================================
+# LOGS (prevent committing log files)
+# ============================================================================
+
+# Log files
+*.log
+logs/
+*.log.*
+
+# Output directories
+outputs/*/
+results/
+runs/
+
+# Keep the structure
+!outputs/.gitkeep
+!results/.gitkeep
+
+# ============================================================================
+# KAGGLE API CREDENTIALS
+# ============================================================================
+
+# Kaggle API token (NEVER commit this!)
+# NOTE: Use environment variable KAGGLE_API_TOKEN instead of hardcoding
+kaggle.json
+. kaggle/
+**/. kaggle/
+
+# User-specific Kaggle credentials anywhere in project
+**/kaggle.json
+
+# Don't commit files with hardcoded tokens
+*_token.txt
+*_api_key.txt

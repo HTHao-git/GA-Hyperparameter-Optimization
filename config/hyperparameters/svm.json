@@ -1,0 +1,79 @@
+{
+  "model_type": "svm",
+  "description": "Support Vector Machine hyperparameter search space",
+  "last_updated": "2025-12-31",
+  
+  "hyperparameters": {
+    
+    "C": {
+      "type": "continuous",
+      "min": 0.01,
+      "max": 100.0,
+      "scale": "log10",
+      "description": "Regularization parameter (inverse of regularization strength)",
+      "notes": "Log scale.  Smaller C = stronger regularization. Typical: 0.1-10."
+    },
+    
+    "kernel": {
+      "type": "categorical",
+      "values": ["linear", "rbf", "poly"],
+      "description": "Kernel type for SVM",
+      "notes": "linear: fast, for linearly separable data; rbf: most common; poly: rarely used"
+    },
+    
+    "gamma": {
+      "type": "continuous",
+      "min": 0.0001,
+      "max": 1.0,
+      "scale": "log10",
+      "description": "Kernel coefficient (for rbf, poly)",
+      "notes": "Log scale. Higher gamma = more complex decision boundary. Auto = 1/n_features."
+    },
+    
+    "degree": {
+      "type":  "discrete",
+      "min":  2,
+      "max": 5,
+      "description": "Degree of polynomial kernel (only for poly kernel)",
+      "notes": "Only used when kernel='poly'. Higher degree = more complex."
+    },
+    
+    "num_pca_components": {
+      "type": "discrete",
+      "min": null,
+      "max": null,
+      "description":  "Number of PCA components for dimensionality reduction",
+      "notes": "Range is dataset-specific. Set in default_config.yaml or auto-detected."
+    }
+  },
+  
+  "dataset_specific_overrides": {
+    "isolet": {
+      "num_pca_components":  {
+        "min": 50,
+        "max": 180
+      }
+    },
+    
+    "fashion_mnist": {
+      "num_pca_components": {
+        "min": 50,
+        "max": 200
+      }
+    },
+    
+    "secom": {
+      "num_pca_components":  {
+        "min": 30,
+        "max": 100
+      }
+    },
+    
+    "steel_plates": {
+      "num_pca_components": {
+        "min":  15,
+        "max":  25
+      }
+    }
+  }
+}

@@ -1,0 +1,210 @@
+# ============================================================================
+# HYPERPARAMETER OPTIMIZATION PROJECT - MASTER CONFIGURATION
+# ============================================================================
+# This file controls all aspects of the optimization experiment. 
+# 
+# USAGE:
+#   - Modify values below to customize your experiment
+#   - Leave a setting as 'null' to use recommended defaults
+#   - Comments explain available options for each setting
+# 
+# Last updated: 2025-12-31
+# ============================================================================
+
+# ============================================================================
+# EXPERIMENT METADATA
+# ============================================================================
+
+experiment: 
+  name: null                          # Experiment name (null = auto-generate timestamp)
+  random_seed: 42                     # Random seed for reproducibility
+  description: "Hyperparameter optimization experiment"
+
+# ============================================================================
+# DATASET CONFIGURATION
+# ============================================================================
+
+dataset:
+  # Dataset name
+  # OPTIONS:  'isolet', 'fashion_mnist', 'secom', 'steel_plates', 'custom'
+  name:  'secom'
+  
+  # Path to dataset (for custom datasets)
+  # For built-in datasets, this is auto-determined
+  # For custom datasets, specify file path (e.g., 'datasets/custom/my_data.csv')
+  path: null
+  
+  # Train/validation/test split ratios (must sum to 1.0)
+  # For SECOM/Steel Plates with SMOTE:  train/test only (val = test)
+  split_ratio: 
+    train: 0.60
+    validation: 0.20
+    test: 0.20
+  
+  # ========================================================================
+  # PREPROCESSING OPTIONS
+  # ========================================================================
+  
+  preprocessing:
+    # Missing value imputation
+    # OPTIONS: 'mean', 'median', 'drop', null (no imputation)
+    missing_values_strategy: 'mean'
+    
+    # Apply standardization (Z-score normalization)
+    # OPTIONS: true, false
+    standardize: true
+    
+    # Apply SMOTE oversampling for imbalanced datasets
+    # OPTIONS:  true, false, 'auto' (auto-detect imbalance)
+    use_smote: 'auto'
+    
+    # SMOTE strategy (only used if use_smote is true)
+    # OPTIONS: 'auto', 'all', 'minority', or dict like {0: 100, 1: 200}
+    # 'auto' = balance minority classes to majority
+    # 'all' = balance all classes to majority count
+    smote_strategy: 'auto'
+    
+    # SMOTE k_neighbors (number of nearest neighbors for synthetic samples)
+    smote_k_neighbors: 5
+  
+  # ========================================================================
+  # PCA CONFIGURATION
+  # ========================================================================
+  
+  pca:
+    # Apply PCA dimensionality reduction
+    # OPTIONS:  true, false
+    enabled: true
+    
+    # PCA component range for hyperparameter search
+    # These values will be searched during optimization
+    # Set to null to use dataset-specific defaults
+    min_components: null              # Minimum PCA components (null = auto)
+    max_components: null              # Maximum PCA components (null = auto)
+    
+    # For datasets with known optimal ranges, defaults are: 
+    # - ISOLET: [50, 180]
+    # - Fashion-MNIST: [50, 200]
+    # - SECOM: [30, 100]
+    # - Steel Plates: [15, 25]
+
+# ============================================================================
+# MODEL CONFIGURATION
+# ============================================================================
+
+model:
+  # Model type
+  # OPTIONS: 'neural_network', 'svm', 'logistic_regression'
+  type: 'neural_network'
+  
+  # Path to hyperparameter configuration file
+  # null = use default for model type
+  # Custom path: 'config/hyperparameters/my_custom_nn.json'
+  hyperparameter_config:  null
+  
+  # Training configuration (for Neural Networks)
+  training:
+    # Number of epochs for fitness evaluation during HPO
+    # Keep low for faster search (20-35 typical)
+    epochs: 20
+    
+    # Number of epochs for final model training
+    # Higher for better performance (100-150 typical)
+    final_epochs: 100
+    
+    # Early stopping patience (for NN training)
+    early_stopping_patience: 5
+    
+    # Use class weights for imbalanced datasets
+    # OPTIONS: true, false, 'auto' (auto-detect imbalance)
+    use_class_weights: 'auto'
+
+# ============================================================================
+# HPO METHOD CONFIGURATION
+# ============================================================================
+
+hpo: 
+  # HPO method
+  # OPTIONS: 'nsga2', 'vanilla_ga', 'grid_search'
+  method: 'nsga2'
+  
+  # Path to HPO-specific configuration file
+  # null = use default for HPO method
+  # Custom path:  'hpo_methods/nsga2/my_custom_config.json'
+  config_path: null
+  
+  # ========================================================================
+  # COMMON HPO SETTINGS (override method-specific defaults)
+  # ========================================================================
+  
+  # Population size (for GA methods)
+  population_size: null               # null = use method default
+  
+  # Number of generations/iterations
+  generations: null                   # null = use method default
+  
+  # Crossover rate (for GA methods)
+  crossover_rate: null                # null = use method default (0.8 typical)
+  
+  # Mutation rate (for GA methods)
+  mutation_rate: null                 # null = use method default (0.15-0.2 typical)
+  
+  # Enable early stopping
+  enable_early_stop: true
+  
+  # Resume from checkpoint if available
+  resume:  true
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+
+output:
+  # Base directory for all outputs
+  # null = 'outputs/' (default)
+  base_dir: 'outputs'
+  
+  # Save checkpoints every N generations/iterations
+  checkpoint_frequency: 5
+  
+  # Generate visualizations
+  # OPTIONS: true, false
+  generate_plots: true
+  
+  # Save best model weights
+  save_best_model: true
+  
+  # Verbosity level
+  # OPTIONS: 0 (silent), 1 (progress bars only), 2 (detailed)
+  verbose: 2
+
+# ============================================================================
+# VISUALIZATION CONFIGURATION
+# ============================================================================
+
+visualization:
+  # DPI for saved plots
+  dpi: 300
+  
+  # Plot style
+  # OPTIONS: 'default', 'seaborn', 'ggplot', 'bmh'
+  style: 'seaborn'
+  
+  # Color palette
+  # OPTIONS: 'deep', 'muted', 'bright', 'pastel', 'dark', 'colorblind'
+  color_palette: 'deep'
+
+# ============================================================================
+# ADVANCED SETTINGS (rarely need to change)
+# ============================================================================
+
+advanced:
+  # Number of parallel jobs (for Grid Search)
+  # -1 = use all CPU cores, 1 = no parallelization
+  n_jobs: 1
+  
+  # TensorFlow GPU memory growth (prevents OOM errors)
+  gpu_memory_growth: true
+  
+  # Suppress TensorFlow warnings
+  suppress_tf_warnings: true

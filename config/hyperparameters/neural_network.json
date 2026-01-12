@@ -1,0 +1,122 @@
+{
+  "model_type": "neural_network",
+  "description": "Neural Network hyperparameter search space (based on Colab Cell 3)",
+  "last_updated": "2025-12-31",
+  
+  "hyperparameters": {
+    
+    "num_layers": {
+      "type": "discrete",
+      "min": 1,
+      "max": 4,
+      "description": "Number of hidden layers in the neural network",
+      "notes": "Typical range: 1-4 layers for most datasets"
+    },
+    
+    "neurons":  {
+      "type": "categorical",
+      "values": [64, 128, 256, 512],
+      "description": "Number of neurons per hidden layer",
+      "notes": "Larger networks (512) for complex datasets, smaller (64-128) for simple ones"
+    },
+    
+    "activation":  {
+      "type": "categorical",
+      "values": ["relu", "tanh", "elu"],
+      "description": "Activation function for hidden layers",
+      "notes": "relu:  most common, fast; tanh: for normalized data; elu: smoother gradients"
+    },
+    
+    "optimizer": {
+      "type": "categorical",
+      "values": ["adam", "rmsprop", "sgd"],
+      "description": "Optimization algorithm",
+      "notes": "adam: adaptive, good default; rmsprop: for RNNs; sgd: simple, needs tuning"
+    },
+    
+    "learning_rate": {
+      "type": "continuous",
+      "min": 0.0001,
+      "max": 0.01,
+      "scale": "log10",
+      "description": "Learning rate for optimizer",
+      "notes": "Log scale search. Typical:  0.001. Lower for stability, higher for speed."
+    },
+    
+    "batch_size": {
+      "type": "categorical",
+      "values": [32, 64, 128, 256],
+      "description": "Number of samples per gradient update",
+      "notes": "Smaller batches (32-64) for better generalization, larger (128-256) for speed"
+    },
+    
+    "dropout": {
+      "type": "continuous",
+      "min": 0.0,
+      "max": 0.5,
+      "scale": "linear",
+      "description": "Dropout rate for regularization",
+      "notes": "0.0 = no dropout, 0.3-0.5 = strong regularization. Prevents overfitting."
+    },
+    
+    "l2_reg": {
+      "type": "continuous",
+      "min": 0.0001,
+      "max": 0.01,
+      "scale": "log10",
+      "description": "L2 regularization strength",
+      "notes": "Log scale search. Adds penalty for large weights.  Prevents overfitting."
+    },
+    
+    "num_pca_components": {
+      "type": "discrete",
+      "min": null,
+      "max": null,
+      "description": "Number of PCA components for dimensionality reduction",
+      "notes": "Range is dataset-specific. Set in default_config.yaml or auto-detected."
+    }
+  },
+  
+  "dataset_specific_overrides": {
+    "isolet": {
+      "num_pca_components": {
+        "min": 50,
+        "max": 180
+      },
+      "notes": "ISOLET: 617 features, 26 classes. Higher PCA range for complex acoustic features."
+    },
+    
+    "fashion_mnist": {
+      "num_pca_components":  {
+        "min": 50,
+        "max": 200
+      },
+      "notes":  "Fashion-MNIST: 784 features, 10 classes. Wide PCA range for image data."
+    },
+    
+    "secom": {
+      "num_pca_components": {
+        "min": 30,
+        "max": 100
+      },
+      "notes": "SECOM: 590 features, 2 classes, highly imbalanced. Moderate PCA range."
+    },
+    
+    "steel_plates":  {
+      "num_pca_components": {
+        "min": 15,
+        "max": 25
+      },
+      "notes": "Steel Plates:  27 features, 7 classes. Narrow PCA range (few features)."
+    }
+  },
+  
+  "encoding_info": {
+    "description": "Information about how hyperparameters are encoded in chromosomes",
+    "notes": "Chromosomes use normalized [0, 1] encoding. Decoding maps to actual values.",
+    
+    "discrete":  "Encoded as float in [0, 1], decoded to integer in [min, max]",
+    "continuous": "Encoded as float in [0, 1], decoded with scale (linear or log10)",
+    "categorical": "Encoded as float in [0, 1], decoded to index in values list"
+  }
+}

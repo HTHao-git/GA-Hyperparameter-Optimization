@@ -1,0 +1,159 @@
+{
+  "isolet": {
+    "name":  "ISOLET",
+    "description": "Isolated Letter Speech Recognition - UCI ML Repository",
+    "sources": {
+      "uciml": {
+        "priority": 1,
+        "dataset_id": 54,
+        "note": "New UCI ML Repo API (recommended)"
+      },
+      "openml": {
+        "priority": 2,
+        "dataset_id": 300,
+        "note": "Alternative source via OpenML API"
+      },
+      "uci": {
+        "priority": 3,
+        "url": "https://archive.ics.uci.edu/ml/machine-learning-databases/isolet/",
+        "files": {
+          "train":  "isolet1+2+3+4.data",
+          "test": "isolet5.data"
+        },
+        "format": "comma_separated",
+        "compressed": false,
+        "note": "Legacy URL (may not work)"
+      }
+    },
+    "metadata": {
+      "samples": 7797,
+      "train_samples": 6238,
+      "test_samples":  1559,
+      "features": 617,
+      "classes": 26,
+      "class_names": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"],
+      "task": "multiclass_classification",
+      "target_column": -1,
+      "has_header": false,
+      "missing_values": false
+    }
+  },
+
+  "fashion_mnist": {
+    "name": "Fashion-MNIST",
+    "description": "Fashion-MNIST - Zalando's article images",
+    "sources": {
+      "tensorflow": {
+        "priority": 1,
+        "method": "keras. datasets. fashion_mnist. load_data",
+        "note": "Built-in to TensorFlow/Keras (easiest)"
+      },
+      "github": {
+        "priority": 2,
+        "url": "https://github.com/zalandoresearch/fashion-mnist/raw/master/data/fashion/",
+        "files": {
+          "train_images": "train-images-idx3-ubyte. gz",
+          "train_labels": "train-labels-idx1-ubyte.gz",
+          "test_images": "t10k-images-idx3-ubyte.gz",
+          "test_labels": "t10k-labels-idx1-ubyte. gz"
+        },
+        "format": "idx_ubyte",
+        "compressed": true,
+        "compression_type":  "gz"
+      }
+    },
+    "metadata": {
+      "samples": 70000,
+      "train_samples": 60000,
+      "test_samples": 10000,
+      "features": 784,
+      "image_shape": [28, 28],
+      "classes": 10,
+      "class_names": ["T-shirt/top", "Trouser", "Pullover", "Dress", "Coat", "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"],
+      "task": "multiclass_classification",
+      "missing_values": false
+    }
+  },
+
+  "secom": {
+    "name": "SECOM",
+    "description": "Semiconductor Manufacturing Process - UCI ML Repository",
+    "sources": {
+      "uci":  {
+        "priority": 1,
+        "url": "https://archive.ics.uci.edu/ml/machine-learning-databases/secom/",
+        "files":  {
+          "features": "secom.data",
+          "labels": "secom_labels.data"
+        },
+        "format": "space_separated",
+        "compressed": false
+      },
+      "github": {
+        "priority": 2,
+        "url": "https://raw.githubusercontent.com/selva86/datasets/master/",
+        "files": {
+          "combined": "secom.csv"
+        },
+        "format": "csv",
+        "compressed": false,
+        "note": "Preprocessed version (easier to use)"
+      }
+    },
+    "metadata": {
+      "samples": 1567,
+      "features": 590,
+      "classes": 2,
+      "class_names":  ["Pass", "Fail"],
+      "class_distribution": {
+        "Pass": 1463,
+        "Fail": 104
+      },
+      "task":  "binary_classification",
+      "imbalanced": true,
+      "imbalance_ratio": 14.1,
+      "missing_values":  true,
+      "missing_percentage": 25.3,
+      "separate_label_file": true,
+      "target_column": null,
+      "has_header": false
+    }
+  },
+
+  "steel_plates": {
+    "name": "Steel Plates Faults",
+    "description": "Steel Plates Faults - UCI ML Repository",
+    "sources": {
+      "uci": {
+        "priority": 1,
+        "url": "https://archive.ics.uci.edu/ml/machine-learning-databases/00198/",
+        "files": {
+          "data": "Faults.NNA"
+        },
+        "format":  "custom_nna",
+        "compressed": false,
+        "note": "Custom NNA format (requires special parser)"
+      },
+      "kaggle": {
+        "priority":  2,
+        "dataset_id": "uciml/faulty-steel-plates",
+        "files": {
+          "data": "faults.csv"
+        },
+        "format": "csv",
+        "note": "Requires Kaggle API credentials"
+      }
+    },
+    "metadata": {
+      "samples": 1941,
+      "features": 27,
+      "classes": 7,
+      "class_names":  ["Pastry", "Z_Scratch", "K_Scatch", "Stains", "Dirtiness", "Bumps", "Other_Faults"],
+      "task": "multiclass_classification",
+      "imbalanced": false,
+      "missing_values": false,
+      "target_column": null,
+      "has_header":  false
+    }
+  }
+}

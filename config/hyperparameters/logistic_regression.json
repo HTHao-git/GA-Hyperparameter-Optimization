@@ -1,0 +1,77 @@
+{
+  "model_type":  "logistic_regression",
+  "description": "Logistic Regression hyperparameter search space",
+  "last_updated": "2025-12-31",
+  
+  "hyperparameters":  {
+    
+    "C":  {
+      "type": "continuous",
+      "min": 0.001,
+      "max": 10.0,
+      "scale":  "log10",
+      "description": "Inverse of regularization strength",
+      "notes": "Log scale. Smaller C = stronger regularization. Typical: 0.01-1.0."
+    },
+    
+    "penalty": {
+      "type": "categorical",
+      "values": ["l1", "l2"],
+      "description": "Regularization penalty",
+      "notes": "l1: sparse weights (feature selection); l2: shrinks weights (default)"
+    },
+    
+    "solver": {
+      "type":  "categorical",
+      "values":  ["liblinear", "saga"],
+      "description": "Optimization algorithm",
+      "notes": "liblinear: good for small datasets; saga: fast for large datasets, supports l1"
+    },
+    
+    "max_iter": {
+      "type": "discrete",
+      "min": 100,
+      "max": 2000,
+      "description": "Maximum number of iterations for solver convergence",
+      "notes": "Increase if solver doesn't converge. Typical: 1000-1500."
+    },
+    
+    "num_pca_components": {
+      "type": "discrete",
+      "min": null,
+      "max": null,
+      "description":  "Number of PCA components for dimensionality reduction",
+      "notes": "Range is dataset-specific. Set in default_config.yaml or auto-detected."
+    }
+  },
+  
+  "dataset_specific_overrides": {
+    "isolet": {
+      "num_pca_components":  {
+        "min": 50,
+        "max": 180
+      }
+    },
+    
+    "fashion_mnist": {
+      "num_pca_components": {
+        "min":  50,
+        "max":  200
+      }
+    },
+    
+    "secom":  {
+      "num_pca_components": {
+        "min": 30,
+        "max": 100
+      }
+    },
+    
+    "steel_plates": {
+      "num_pca_components": {
+        "min": 15,
+        "max": 25
+      }
+    }
+  }
+}
