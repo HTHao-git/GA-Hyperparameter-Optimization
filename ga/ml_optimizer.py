@@ -20,6 +20,7 @@
 
 import numpy as np
 import time
+from typing import Dict, Any, Tuple
 from typing import Dict, Any, Optional, Tuple
 from pathlib import Path
 import json
@@ -112,6 +113,7 @@ class MLOptimizer:
                  y: np.ndarray,
                  model_type: str = 'random_forest',
                  ga_config: Optional[GAConfig] = None,
+                 fitness_metric: str = 'accuracy',
                  cv_folds: int = 5,
                  test_size: float = 0.2,
                  random_state: int = 42,
@@ -123,6 +125,7 @@ class MLOptimizer:
         self.X = X
         self.y = y
         self.model_type = model_type
+        self.fitness_metric = fitness_metric
         self.cv_folds = cv_folds
         self.test_size = test_size
         self.random_state = random_state
@@ -276,29 +279,29 @@ class MLOptimizer:
                 self.logger. warning(f"Configuration failed: {e}")
             return 0.0
     
-    def _final_evaluation(self, config: Dict[str, Any]) -> float:
+    def _final_evaluation(self, config:  Dict[str, Any]) -> Tuple[float, Dict[str, float]]:
         """
         Final evaluation on held-out test set.
         
-        Args:
-            config: Best configuration
-            
         Returns:
-            Test accuracy
+            (test_score, metrics_dict)
         """
+        import time
+        eval_start = time.time()
+        
         from sklearn.model_selection import train_test_split
-        from sklearn.metrics import accuracy_score
+        from sklearn.metrics import accuracy_score, f1_score
         
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
             self.X, self.y,
             test_size=self.test_size,
             random_state=self.random_state,
-            stratify=self.y
+            stratify=self. y
         )
         
         # Preprocess
-        X_train_processed, y_train_processed = self._preprocess(X_train, y_train, config)
+        X_train_processed, y_train_processed = self._preprocess(X_train, y_train, config, fit=True)
         X_test_processed, _ = self._preprocess(X_test, y_test, config, fit=False)
         
         # Train model
@@ -306,12 +309,21 @@ class MLOptimizer:
         model.fit(X_train_processed, y_train_processed)
         
         # Predict
-        y_pred = model.predict(X_test_processed)
+        y_pred = model. predict(X_test_processed)
         
         # Evaluate
         accuracy = accuracy_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
         
-        return float(accuracy)
+        eval_time = time.time() - eval_start
+        
+        metrics = {
+            'accuracy': accuracy,
+            'f1_score': f1,
+            'evaluation_time': eval_time
+        }
+        
+        return accuracy, metrics
     
     # ========================================================================
     # PREPROCESSING
@@ -324,13 +336,13 @@ class MLOptimizer:
                     fit: bool = True) -> Tuple[np.ndarray, np.ndarray]: 
         """
         Apply preprocessing pipeline.
-        
+
         Args:
             X: Features
             y: Labels
             config: Configuration with preprocessing params
             fit: Whether to fit transformers
-            
+
         Returns: 
             (X_processed, y_processed) tuple
         """

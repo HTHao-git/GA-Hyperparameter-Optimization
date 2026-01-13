@@ -1,98 +1,107 @@
 # ============================================================================
-# GENETIC ALGORITHM CORE FRAMEWORK
+# GENETIC ALGORITHM CORE
 # ============================================================================
-# Main GA implementation for hyperparameter optimization
+# Main GA implementation with support for:
+#   - Configurable operators (selection, crossover, mutation)
+#   - Adaptive parameters
+#   - Early stopping
+#   - Fitness caching
+#   - Comprehensive logging
 #
-# FEATURES:
-#   - Population management
-#   - Generation evolution
-#   - Elitism preservation
-#   - Convergence tracking
-#   - Progress monitoring
-#   - Result persistence
-#
-# USAGE: 
-#   from ga.genetic_algorithm import GeneticAlgorithm
-#   
-#   ga = GeneticAlgorithm(config)
-#   best_solution = ga.run()
-#
-# Last updated: 2026-01-02
+# Last updated: 2026-01-12
 # ============================================================================
 
 import numpy as np
+import random
 import time
-from typing import Dict, Any, List, Tuple, Optional, Callable
-from pathlib import Path
 import json
-from dataclasses import dataclass, asdict
+from typing import Dict, Any, List, Callable, Optional, Tuple
+from dataclasses import dataclass, field
+from pathlib import Path
 
 from utils.logger import Logger
-from utils.colors import print_header, print_section, print_success, print_info, print_warning
-from ga.types import Individual, GenerationStats
-from ga.selection import SelectionOperator
-from ga.crossover import CrossoverOperator
-from ga.mutation import MutationOperator
-from ga.adaptive import AdaptiveParameterManager
+from utils. colors import print_header, print_section, print_info, print_success, print_warning
+
 
 # ============================================================================
-# DATA CLASSES
+# CONFIGURATION
 # ============================================================================
 
 @dataclass
-class GAConfig:
+class GAConfig: 
     """Configuration for Genetic Algorithm."""
     
-    # Population parameters
+    # ========================================================================
+    # POPULATION & GENERATIONS
+    # ========================================================================
     population_size: int = 50
     num_generations: int = 100
     
-    # Genetic operators
-    crossover_rate:  float = 0.8
+    # ========================================================================
+    # OPERATOR RATES
+    # ========================================================================
+    crossover_rate: float = 0.8
     mutation_rate: float = 0.1
     elitism_rate: float = 0.1
     
-    # Selection
-    tournament_size: int = 3
-    selection_method: str = 'tournament'  # Can use:  tournament, roulette, rank, boltzmann, sus, truncation, linear_ranking
+    # ========================================================================
+    # OPERATOR METHODS
+    # ========================================================================
+    selection_method: str = 'tournament'  # 'tournament', 'roulette', 'rank', 'sus', 'boltzmann'
+    crossover_method: str = 'uniform'     # 'single_point', 'two_point', 'uniform', 'arithmetic', 'blx_alpha', 'sbx'
+    mutation_method: str = 'adaptive'     # 'uniform', 'gaussian', 'polynomial', 'adaptive', 'boundary', 'non_uniform'
     
-    # Crossover
-    crossover_method: str = 'uniform'  # uniform, single_point, two_point, arithmetic, sbx
+    # ========================================================================
+    # ADVANCED MUTATION SETTINGS
+    # ========================================================================
+    mutation_strength: str = 'medium'     # 'small', 'medium', 'large'
+    adaptive_mutation: bool = True        # Enable adaptive mutation rate
+    adaptive_method: str = 'diversity_based'  # 'diversity_based', 'fitness_based', 'schedule'
     
-    # Mutation
-    mutation_method: str = 'gaussian'  # uniform, gaussian, polynomial, adaptive, boundary, non_uniform
-    mutation_sigma: float = 0.1        # For Gaussian/Adaptive
-    mutation_eta: float = 20.0         # For Polynomial
+    # ========================================================================
+    # SELECTION PARAMETERS
+    # ========================================================================
+    tournament_size: int = 3              # For tournament selection
     
-    # Diversity
-    diversity_threshold: float = 0.1
-    niching_enabled: bool = False
+    # ========================================================================
+    # DIVERSITY MAINTENANCE
+    # ========================================================================
+    diversity_maintenance:  bool = False   # Enable diversity maintenance
+    diversity_method: str = 'fitness_sharing'  # 'fitness_sharing', 'crowding'
+    sharing_radius: float = 0.1          # For fitness sharing
     
-    # Convergence
-    early_stopping:  bool = True
-    patience: int = 10  # Generations without improvement
-    min_improvement: float = 0.001
+    # ========================================================================
+    # EARLY STOPPING
+    # ========================================================================
+    early_stopping: bool = True
+    patience: int = 10
+    diversity_threshold: float = 0.0      # Min diversity to continue (0.0 = disabled)
     
-    # Performance
-    n_jobs: int = 1  # Parallel fitness evaluation
-    cache_fitness: bool = True
+    # ========================================================================
+    # PERFORMANCE
+    # ========================================================================
+    cache_fitness: bool = False           # Cache fitness evaluations
     
-    # Logging
-    verbose: int = 1  # 0: silent, 1: normal, 2: detailed
-    save_history: bool = True
+    # ========================================================================
+    # LOGGING
+    # ========================================================================
+    verbose: int = 1                      # 0=silent, 1=normal, 2=detailed
     
-    # Random state
+    # ========================================================================
+    # REPRODUCIBILITY
+    # ========================================================================
     random_state: int = 42
 
 
+# ============================================================================
+# INDIVIDUAL
+# ============================================================================
+
 @dataclass
-class Individual:
-    """Represents a single solution (chromosome)."""
-    
+class Individual: 
+    """Represents a single solution (individual) in the population."""
     chromosome: Dict[str, Any]
-    fitness: float = -np.inf
-    age: int = 0
-    generation: int = 0
+    fitness: float = 0.0
     evaluated: bool = False
     
     def __hash__(self):
@@ -102,51 +111,55 @@ class Individual:
             """Convert NumPy types to Python natives."""
             if isinstance(obj, (np.integer, np.int32, np.int64)):
                 return int(obj)
-            elif isinstance(obj, (np. floating, np.float32, np.float64)):
+            elif isinstance(obj, (np.floating, np.float32, np. float64)):
                 return float(obj)
-            elif isinstance(obj, (np.bool_, bool)): 
+            elif isinstance(obj, (np.bool_, bool)):
                 return bool(obj)
-            elif isinstance(obj, np. ndarray):
-                return obj. tolist()
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
             else:
                 return obj
         
         serializable = {k: make_serializable(v) for k, v in self.chromosome.items()}
         return hash(json.dumps(serializable, sort_keys=True))
-
-@dataclass
-class GenerationStats:
-    """Statistics for a single generation."""
     
+    def __eq__(self, other):
+        """Equality comparison for caching."""
+        if not isinstance(other, Individual):
+            return False
+        return self.chromosome == other.chromosome
+
+
+@dataclass  
+class GenerationStats:
+    """Statistics for a generation."""
     generation: int
-    best_fitness:  float
+    best_fitness: float
     mean_fitness: float
     std_fitness: float
-    worst_fitness: float
     diversity: float
-    evaluation_time: float
-    total_time: float
+    time:  float = 0.0
 
 
 # ============================================================================
-# GENETIC ALGORITHM CLASS
+# GENETIC ALGORITHM
 # ============================================================================
 
-class GeneticAlgorithm:
+class GeneticAlgorithm: 
     """
-    Genetic Algorithm for hyperparameter optimization. 
+    Genetic Algorithm for hyperparameter optimization.
     
     Args:
         config: GA configuration
-        fitness_function: Function to evaluate fitness (chromosome -> float)
-        chromosome_template: Template defining chromosome structure
+        fitness_function: Function to evaluate individuals
+        chromosome_template:  Hyperparameter search space
         logger: Logger instance
     """
     
     def __init__(self,
                  config: GAConfig,
                  fitness_function:  Callable[[Dict[str, Any]], float],
-                 chromosome_template: Dict[str, List[Any]],
+                 chromosome_template: Dict[str, Any],
                  logger: Optional[Logger] = None):
         
         self.config = config
@@ -154,59 +167,104 @@ class GeneticAlgorithm:
         self.chromosome_template = chromosome_template
         self.logger = logger
         
+        # Set random seeds
+        random.seed(config.random_state)
+        np.random.seed(config.random_state)
+        
         # Population
         self.population: List[Individual] = []
-        self.best_individual: Optional[Individual] = None
-        self.generation = 0
+        self. best_individual: Optional[Individual] = None
         
         # History
         self.history: List[GenerationStats] = []
+        
+        # Fitness cache
         self.fitness_cache: Dict[int, float] = {}
         
-        # Convergence tracking
+        # Early stopping
         self.generations_without_improvement = 0
         self.best_fitness_so_far = -np.inf
         
-        # Timing
-        self.start_time = None
-        self.total_evaluations = 0
-        
-        # Set random seed
-        np.random.seed(config.random_state)
+        # Initialize advanced operators (with safe fallbacks)
+        self._initialize_operators()
         
         if self.logger:
             self.logger.info("Genetic Algorithm initialized")
             self.logger.info(f"  Population size: {config.population_size}")
-            self.logger.info(f"  Generations:  {config.num_generations}")
+            self.logger.info(f"  Generations: {config.num_generations}")
             self.logger.info(f"  Crossover rate: {config.crossover_rate}")
             self.logger.info(f"  Mutation rate: {config.mutation_rate}")
-
-        # Create selection operator
-        self.selector = SelectionOperator(
-            method=config.selection_method,
-            tournament_size=config.tournament_size,
-            logger=logger
-        )
+    
+    def _initialize_operators(self):
+        """Initialize advanced operators with safe fallbacks."""
         
-        # Create crossover operator
-        self. crossover_op = CrossoverOperator(
-            method=config.crossover_method,
-            crossover_rate=config.crossover_rate,
-            logger=logger
-        )
-                
-        # Create mutation operator
-        self. mutator = MutationOperator(
-            method=config.mutation_method,
-            mutation_rate=config.mutation_rate,
-            sigma=config.mutation_sigma,
-            eta=config.mutation_eta,
-            max_generations=config.num_generations,
-            logger=logger
-        )
+        # Selection operator
+        try: 
+            from ga.selection import SelectionOperator
+            self.selection_operator = SelectionOperator(
+                method=self.config. selection_method,
+                logger=self.logger
+            )
+            # Set tournament size separately if supported
+            if hasattr(self.selection_operator, 'tournament_size'):
+                self.selection_operator.tournament_size = self.config.tournament_size
+        except (ImportError, AttributeError) as e:
+            if self.logger and self.config.verbose >= 2:
+                self.logger.warning(f"Could not load SelectionOperator: {e}")
+            self.selection_operator = None
+        
+        # Crossover operator
+        try:
+            from ga.crossover import CrossoverOperator
+            self.crossover_operator = CrossoverOperator(
+                method=self.config.crossover_method,
+                logger=self.logger
+            )
+        except (ImportError, AttributeError) as e:
+            if self.logger and self.config.verbose >= 2:
+                self. logger.warning(f"Could not load CrossoverOperator: {e}")
+            self.crossover_operator = None
+        
+        # Mutation operator
+        try: 
+            from ga.mutation import MutationOperator
+            self.mutation_operator = MutationOperator(
+                method=self.config.mutation_method,
+                mutation_rate=self.config.mutation_rate,
+                logger=self.logger
+            )
+            # Set strength separately if supported
+            if hasattr(self. mutation_operator, 'strength'):
+                self.mutation_operator. strength = self.config.mutation_strength
+        except (ImportError, AttributeError) as e:
+            if self.logger and self. config.verbose >= 2:
+                self.logger.warning(f"Could not load MutationOperator: {e}")
+            self.mutation_operator = None
+        
+        # Adaptive parameter manager
+        if self.config.adaptive_mutation:
+            try:
+                from ga.adaptive import AdaptiveParameterManager
+                self.adaptive_manager = AdaptiveParameterManager(
+                    method=self.config.adaptive_method,
+                    initial_mutation_rate=self.config.mutation_rate,
+                    initial_crossover_rate=self.config.crossover_rate,
+                    logger=self.logger
+                )
+            except (ImportError, AttributeError) as e:
+                if self.logger and self.config.verbose >= 2:
+                    self. logger.warning(f"Could not load AdaptiveParameterManager: {e}")
+                self.adaptive_manager = None
+        else:
+            self.adaptive_manager = None
+        
+        if self.logger and self.config.verbose >= 2:
+            self.logger. debug("Using basic GA operators (selection, crossover, mutation)")
+        else: 
+            self.adaptive_manager = None
     
     # ========================================================================
-    # MAIN GA LOOP
+    # MAIN EVOLUTION LOOP
     # ========================================================================
     
     def run(self) -> Individual:
@@ -216,48 +274,68 @@ class GeneticAlgorithm:
         Returns:
             Best individual found
         """
-        if self.logger:
+        if self.logger and self.config. verbose >= 1:
             print_header("GENETIC ALGORITHM OPTIMIZATION")
             print()
-        
-        self.start_time = time.time()
         
         # Initialize population
         self._initialize_population()
         
-        # Main evolution loop
-        for gen in range(self.config.num_generations):
-            self.generation = gen
+        # Evolution loop
+        for generation in range(self.config.num_generations):
+            generation_start = time.time()
             
-            gen_start_time = time.time()
-            
-            # Evaluate fitness
-            eval_start = time.time()
+            # Evaluate population
             self._evaluate_population()
-            eval_time = time.time() - eval_start
-            
-            # Update best individual
-            self._update_best()
             
             # Calculate statistics
-            stats = self._calculate_statistics(eval_time, time.time() - gen_start_time)
+            stats = self._calculate_stats(generation)
             self.history.append(stats)
             
-            # Log progress
-            self._log_generation(stats)
+            # Update best individual
+            current_best = max(self.population, key=lambda ind: ind.fitness)
+            if self.best_individual is None or current_best.fitness > self.best_individual.fitness:
+                self.best_individual = Individual(
+                    chromosome=current_best.chromosome. copy(),
+                    fitness=current_best.fitness,
+                    evaluated=True
+                )
             
-            # Check convergence
-            if self._check_convergence():
-                if self.logger:
-                    print_success(f"✓ Converged at generation {gen}")
+            # Record time
+            stats.time = time.time() - generation_start
+            
+            # Logging
+            if self.logger and self.config.verbose >= 1:
+                self._log_generation(stats)
+            
+            # Adaptive parameters
+            if self.adaptive_manager:
+                new_mutation_rate, new_crossover_rate = self. adaptive_manager.adapt(
+                    self.population,
+                    generation,
+                    self.config.num_generations,
+                    stats.diversity
+                )
+                self.config.mutation_rate = new_mutation_rate
+                self. config.crossover_rate = new_crossover_rate
+                
+                if self.mutation_operator:
+                    self. mutation_operator.mutation_rate = new_mutation_rate
+                
+                if self.logger and self.config.verbose >= 2:
+                    self. logger.debug(f"  Adapted rates: mutation={new_mutation_rate:.3f}, crossover={new_crossover_rate:.3f}")
+            
+            # Early stopping checks
+            if self._should_stop(stats):
                 break
             
-            # Create next generation
-            if gen < self.config.num_generations - 1:
-                self._evolve()
+            # Create next generation (except on last iteration)
+            if generation < self. config.num_generations - 1:
+                self. population = self._create_next_generation()
         
         # Final summary
-        self._print_summary()
+        if self.logger and self.config. verbose >= 1:
+            self._print_summary()
         
         return self.best_individual
     
@@ -266,319 +344,257 @@ class GeneticAlgorithm:
     # ========================================================================
     
     def _initialize_population(self):
-        """Create initial random population."""
+        """Initialize random population."""
         if self.logger and self.config.verbose >= 1:
-            self.logger.info("Initializing population...")
+            print_info("Initializing population...")
         
         self.population = []
-        
-        for i in range(self.config.population_size):
-            chromosome = self._random_chromosome()
-            individual = Individual(
-                chromosome=chromosome,
-                generation=0
-            )
+        for _ in range(self.config.population_size):
+            individual = self._initialize_individual()
             self.population.append(individual)
         
         if self.logger and self.config.verbose >= 1:
-            self.logger.success(f"Population initialized: {len(self.population)} individuals")
+            print_success(f"Population initialized:  {len(self.population)} individuals")
     
-    def _random_chromosome(self) -> Dict[str, Any]:
-        """Generate random chromosome from template."""
+    def _initialize_individual(self) -> Individual:
+        """Create a random individual."""
         chromosome = {}
         
         for gene, possible_values in self.chromosome_template.items():
-            if isinstance(possible_values, list):
-                # Discrete choice
-                # Handle mixed types (e.g., gamma:  ['scale', 'auto', (0.001, 10.0)])
-                if isinstance(possible_values, list):
-                    # Check if list contains tuples (continuous ranges)
-                    has_tuples = any(isinstance(v, tuple) for v in possible_values)
-                    if has_tuples:
-                        # Randomly choose between discrete values and continuous range
-                        non_tuple_values = [v for v in possible_values if not isinstance(v, tuple)]
-                        tuple_values = [v for v in possible_values if isinstance(v, tuple)]
-                        
-                        if non_tuple_values and tuple_values and random.random() < 0.5:
-                            # Choose from discrete values
-                            chromosome[gene] = random.choice(non_tuple_values)
-                        elif tuple_values:
-                            # Choose from continuous range
-                            low, high = random.choice(tuple_values)
-                            chromosome[gene] = random.uniform(low, high)
-                        else:
-                            # Fallback to discrete
-                            chromosome[gene] = random.choice(non_tuple_values)
-                    else:
-                        # All discrete values
-                        chromosome[gene] = random.choice(possible_values)
-                else:
-                    chromosome[gene] = np.random.choice(possible_values)
-            elif isinstance(possible_values, tuple) and len(possible_values) == 2:
-                # Continuous range (min, max)
+            if isinstance(possible_values, tuple) and len(possible_values) == 2:
+                # Continuous range
                 low, high = possible_values
-                if isinstance(low, int) and isinstance(high, int):
-                    chromosome[gene] = np.random.randint(low, high + 1)
+                chromosome[gene] = random.uniform(low, high)
+            
+            elif isinstance(possible_values, list):
+                # Discrete choice - handle mixed types (e.g., gamma:  ['scale', 'auto', (0.001, 10. 0)])
+                has_tuples = any(isinstance(v, tuple) for v in possible_values)
+                
+                if has_tuples:
+                    # Mix of discrete values and continuous ranges
+                    non_tuple_values = [v for v in possible_values if not isinstance(v, tuple)]
+                    tuple_values = [v for v in possible_values if isinstance(v, tuple)]
+                    
+                    if non_tuple_values and tuple_values and random.random() < 0.5:
+                        # Choose from discrete values
+                        chromosome[gene] = random.choice(non_tuple_values)
+                    elif tuple_values:
+                        # Choose from continuous range
+                        low, high = random.choice(tuple_values)
+                        chromosome[gene] = random.uniform(low, high)
+                    else:
+                        # Fallback to discrete
+                        chromosome[gene] = random.choice(non_tuple_values)
                 else:
-                    chromosome[gene] = np.random.uniform(low, high)
+                    # All discrete values
+                    chromosome[gene] = random.choice(possible_values)
+            
             else:
-                raise ValueError(f"Invalid gene specification for {gene}:  {possible_values}")
+                # Single value (constant)
+                chromosome[gene] = possible_values
         
-        return chromosome
+        return Individual(chromosome=chromosome, evaluated=False)
     
     # ========================================================================
     # FITNESS EVALUATION
     # ========================================================================
     
     def _evaluate_population(self):
-        """Evaluate fitness for all individuals."""
+        """Evaluate all unevaluated individuals."""
         for individual in self.population:
             if not individual.evaluated:
                 # Check cache
-                ind_hash = hash(individual)
+                if self.config.cache_fitness:
+                    ind_hash = hash(individual)
+                    if ind_hash in self.fitness_cache:
+                        individual.fitness = self.fitness_cache[ind_hash]
+                        individual.evaluated = True
+                        continue
                 
-                if self.config.cache_fitness and ind_hash in self.fitness_cache:
-                    individual.fitness = self.fitness_cache[ind_hash]
-                else:
-                    # Evaluate
-                    individual.fitness = self.fitness_function(individual.chromosome)
-                    self.total_evaluations += 1
-                    
-                    # Cache result
-                    if self.config.cache_fitness:
-                        self.fitness_cache[ind_hash] = individual.fitness
-                
+                # Evaluate
+                individual.fitness = self. fitness_function(individual.chromosome)
                 individual.evaluated = True
-    
-    # ========================================================================
-    # EVOLUTION
-    # ========================================================================
-    
-    def _evolve(self):
-        """Create next generation."""
-        next_generation = []
-        
-        # Elitism:  preserve best individuals
-        elite_count = int(self.config.population_size * self.config.elitism_rate)
-        if elite_count > 0:
-            sorted_pop = sorted(self.population, key=lambda x: x.fitness, reverse=True)
-            elites = sorted_pop[:elite_count]
-            
-            # Age elites
-            for elite in elites:
-                elite.age += 1
-                elite.generation = self.generation + 1
-            
-            next_generation.extend(elites)
-        
-        # Generate offspring
-        while len(next_generation) < self.config.population_size:
-            # Selection
-            parent1 = self._select()
-            parent2 = self._select()
-            
-            # Crossover
-            child1_chromosome, child2_chromosome = self.crossover_op.crossover(
-                parent1.chromosome,
-                parent2.chromosome,
-                self.chromosome_template
-            )
-            
-            # Mutation
-            self.mutator.update_generation(self.generation)  # For adaptive methods
-            child1_chromosome = self.mutator.mutate(child1_chromosome, self.chromosome_template)
-            child2_chromosome = self.mutator.mutate(child2_chromosome, self.chromosome_template)
-            
-            # Create offspring
-            child1 = Individual(
-                chromosome=child1_chromosome,
-                generation=self.generation + 1
-            )
-            
-            child2 = Individual(
-                chromosome=child2_chromosome,
-                generation=self.generation + 1
-            )
-            
-            next_generation.append(child1)
-            
-            if len(next_generation) < self.config.population_size:
-                next_generation.append(child2)
-        
-        self.population = next_generation
+                
+                # Cache result
+                if self.config.cache_fitness:
+                    self.fitness_cache[ind_hash] = individual. fitness
     
     # ========================================================================
     # SELECTION
     # ========================================================================
     
-    def _select(self) -> Individual:
-        """Select an individual for reproduction."""
-        return self.selector.select(self.population)
-    
-    def _tournament_selection(self) -> Individual:
-        """Tournament selection."""
-        tournament = np.random.choice(
-            self.population,
-            size=min(self.config.tournament_size, len(self.population)),
-            replace=False
-        )
-        
-        return max(tournament, key=lambda x:  x.fitness)
-    
-    def _roulette_selection(self) -> Individual:
-        """Roulette wheel selection."""
-        fitnesses = np.array([ind.fitness for ind in self.population])
-        
-        # Shift to positive if needed
-        if fitnesses.min() < 0:
-            fitnesses = fitnesses - fitnesses.min()
-        
-        # Normalize
-        total_fitness = fitnesses.sum()
-        
-        if total_fitness == 0:
-            # All equal, random selection
-            return np.random.choice(self.population)
-        
-        probabilities = fitnesses / total_fitness
-        
-        return np.random.choice(self.population, p=probabilities)
-    
-    def _rank_selection(self) -> Individual:
-        """Rank-based selection."""
-        sorted_pop = sorted(self.population, key=lambda x: x.fitness)
-        
-        # Assign ranks (1 to N)
-        ranks = np.arange(1, len(sorted_pop) + 1)
-        probabilities = ranks / ranks.sum()
-        
-        return np.random.choice(sorted_pop, p=probabilities)
+    def _select_parent(self) -> Individual:
+        """Select a parent using configured selection method."""
+        if self. selection_operator:
+            # Use advanced selection operator
+            return self.selection_operator.select(self.population)
+        else:
+            # Fallback:  tournament selection
+            tournament_size = self.config.tournament_size
+            tournament = random.sample(self.population, tournament_size)
+            return max(tournament, key=lambda ind: ind.fitness)
     
     # ========================================================================
     # CROSSOVER
     # ========================================================================
     
-    def _crossover(self, 
-                   parent1: Dict[str, Any], 
-                   parent2: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]: 
-        """
-        Uniform crossover. 
-        
-        Args:
-            parent1: First parent chromosome
-            parent2: Second parent chromosome
+    def _crossover(self, parent1: Individual, parent2: Individual) -> Tuple[Individual, Individual]:
+        """Perform crossover."""
+        if self.crossover_operator:
+            # Use advanced crossover operator
+            child1_chromo, child2_chromo = self. crossover_operator.crossover(
+                parent1.chromosome,
+                parent2.chromosome,
+                self.chromosome_template
+            )
+        else:
+            # Fallback:  uniform crossover
+            child1_chromo = {}
+            child2_chromo = {}
             
-        Returns:
-            Two offspring chromosomes
-        """
-        child1 = {}
-        child2 = {}
+            for gene in parent1.chromosome. keys():
+                if random.random() < 0.5:
+                    child1_chromo[gene] = parent1.chromosome[gene]
+                    child2_chromo[gene] = parent2.chromosome[gene]
+                else:
+                    child1_chromo[gene] = parent2.chromosome[gene]
+                    child2_chromo[gene] = parent1.chromosome[gene]
         
-        for gene in parent1.keys():
-            if np.random.random() < 0.5:
-                child1[gene] = parent1[gene]
-                child2[gene] = parent2[gene]
-            else: 
-                child1[gene] = parent2[gene]
-                child2[gene] = parent1[gene]
-        
-        return child1, child2
+        return Individual(chromosome=child1_chromo, evaluated=False), \
+               Individual(chromosome=child2_chromo, evaluated=False)
     
     # ========================================================================
     # MUTATION
     # ========================================================================
     
-    def _mutate(self, chromosome: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Mutate chromosome.
-        
-        Args:
-            chromosome: Chromosome to mutate
-            
-        Returns:
-            Mutated chromosome
-        """
-        mutated = chromosome.copy()
-        
-        # Select random gene to mutate
-        gene = np.random.choice(list(mutated.keys()))
-        
-        # Get possible values
-        possible_values = self.chromosome_template[gene]
-        
-        if isinstance(possible_values, list):
-            # Discrete:  random choice
-            mutated[gene] = np.random.choice(possible_values)
-        
-        elif isinstance(possible_values, tuple) and len(possible_values) == 2:
-            # Continuous:  Gaussian perturbation
-            low, high = possible_values
-            current = mutated[gene]
-            
-            if isinstance(low, int) and isinstance(high, int):
-                # Integer range
-                mutation = np.random.randint(-2, 3)  # Small perturbation
-                mutated[gene] = np.clip(current + mutation, low, high)
-            else:
-                # Float range
-                sigma = (high - low) * 0.1  # 10% of range
-                mutation = np.random.normal(0, sigma)
-                mutated[gene] = np.clip(current + mutation, low, high)
-        
-        return mutated
-    
-    # ========================================================================
-    # STATISTICS & TRACKING
-    # ========================================================================
-    
-    def _update_best(self):
-        """Update best individual found so far."""
-        current_best = max(self.population, key=lambda x: x.fitness)
-        
-        if self.best_individual is None or current_best.fitness > self.best_individual.fitness:
-            self.best_individual = current_best
-            
-            # Check for improvement
-            if current_best.fitness > self.best_fitness_so_far + self.config.min_improvement:
-                self.best_fitness_so_far = current_best.fitness
-                self.generations_without_improvement = 0
-            else:
-                self.generations_without_improvement += 1
+    def _mutate(self, individual:  Individual) -> Individual:
+        """Apply mutation."""
+        if self.mutation_operator:
+            # Use advanced mutation operator
+            mutated_chromosome = self.mutation_operator.mutate(
+                individual.chromosome,
+                self.chromosome_template
+            )
         else:
-            self.generations_without_improvement += 1
+            # Fallback: basic uniform mutation
+            mutated_chromosome = individual.chromosome.copy()
+            
+            for gene, value in mutated_chromosome.items():
+                if random.random() < self.config.mutation_rate:
+                    possible_values = self.chromosome_template[gene]
+                    
+                    if isinstance(possible_values, tuple) and len(possible_values) == 2:
+                        low, high = possible_values
+                        mutated_chromosome[gene] = random.uniform(low, high)
+                    elif isinstance(possible_values, list):
+                        mutated_chromosome[gene] = random.choice(possible_values)
+        
+        return Individual(chromosome=mutated_chromosome, evaluated=False)
     
-    def _calculate_statistics(self, eval_time: float, total_time: float) -> GenerationStats:
+    # ========================================================================
+    # NEXT GENERATION
+    # ========================================================================
+    
+    def _create_next_generation(self) -> List[Individual]:
+        """Create next generation using selection, crossover, and mutation."""
+        next_generation = []
+        
+        # Elitism: preserve best individuals
+        n_elites = int(self.config.elitism_rate * self.config.population_size)
+        if n_elites > 0:
+            elites = sorted(self.population, key=lambda ind: ind.fitness, reverse=True)[:n_elites]
+            next_generation.extend(elites)
+        
+        # Generate offspring
+        while len(next_generation) < self.config.population_size:
+            # Selection
+            parent1 = self._select_parent()
+            parent2 = self._select_parent()
+            
+            # Crossover
+            if random.random() < self.config.crossover_rate:
+                child1, child2 = self._crossover(parent1, parent2)
+            else:
+                child1 = Individual(chromosome=parent1.chromosome.copy(), evaluated=False)
+                child2 = Individual(chromosome=parent2.chromosome.copy(), evaluated=False)
+            
+            # Mutation
+            if random.random() < self.config.mutation_rate:
+                child1 = self._mutate(child1)
+            if random.random() < self.config.mutation_rate:
+                child2 = self._mutate(child2)
+            
+            next_generation.append(child1)
+            if len(next_generation) < self.config.population_size:
+                next_generation.append(child2)
+        
+        return next_generation[: self.config.population_size]
+    
+    # ========================================================================
+    # STATISTICS
+    # ========================================================================
+    
+    def _calculate_stats(self, generation: int) -> GenerationStats:
         """Calculate generation statistics."""
         fitnesses = [ind.fitness for ind in self.population]
         
-        # Diversity (standard deviation of fitnesses)
-        diversity = np.std(fitnesses)
+        best_fitness = max(fitnesses)
+        mean_fitness = np. mean(fitnesses)
+        std_fitness = np.std(fitnesses)
+        diversity = self._calculate_diversity()
         
         return GenerationStats(
-            generation=self.generation,
-            best_fitness=max(fitnesses),
-            mean_fitness=np.mean(fitnesses),
-            std_fitness=np.std(fitnesses),
-            worst_fitness=min(fitnesses),
-            diversity=diversity,
-            evaluation_time=eval_time,
-            total_time=total_time
+            generation=generation,
+            best_fitness=best_fitness,
+            mean_fitness=mean_fitness,
+            std_fitness=std_fitness,
+            diversity=diversity
         )
     
-    def _check_convergence(self) -> bool:
-        """Check if algorithm has converged."""
-        if not self.config.early_stopping:
-            return False
+    def _calculate_diversity(self) -> float:
+        """Calculate population diversity (normalized standard deviation of fitness)."""
+        fitnesses = [ind.fitness for ind in self.population]
         
-        # Check patience
-        if self.generations_without_improvement >= self.config.patience:
+        if len(fitnesses) == 0:
+            return 0.0
+        
+        mean_fitness = np.mean(fitnesses)
+        
+        if mean_fitness == 0:
+            return 0.0
+        
+        std_fitness = np.std(fitnesses)
+        diversity = std_fitness / (abs(mean_fitness) + 1e-10)
+        
+        return diversity
+    
+    # ========================================================================
+    # EARLY STOPPING
+    # ========================================================================
+    
+    def _should_stop(self, stats: GenerationStats) -> bool:
+        """Check if should stop early."""
+        
+        # Check improvement
+        if stats.best_fitness > self.best_fitness_so_far:
+            self.best_fitness_so_far = stats. best_fitness
+            self.generations_without_improvement = 0
+        else:
+            self.generations_without_improvement += 1
+        
+        # Patience-based stopping
+        if self.config.early_stopping and self.generations_without_improvement >= self.config.patience:
+            if self.logger and self.config.verbose >= 1:
+                print_success(f"✓ Converged at generation {stats.generation}")
             return True
         
-        # Check diversity
-        if len(self.history) > 0:
-            if self.history[-1].diversity < self.config.diversity_threshold:
-                if self.logger and self.config.verbose >= 1:
-                    self.logger.warning("Low diversity detected")
+        # Diversity-based stopping
+        if self.config.diversity_threshold > 0 and stats.diversity < self.config.diversity_threshold:
+            if self.logger and self.config. verbose >= 1:
+                print_warning("Low diversity detected")
+            
+            # Only stop if also no improvement
+            if self.generations_without_improvement >= 2:
                 return True
         
         return False
@@ -588,76 +604,35 @@ class GeneticAlgorithm:
     # ========================================================================
     
     def _log_generation(self, stats: GenerationStats):
-        """Log generation progress."""
-        if not self.logger or self.config.verbose == 0:
-            return
+        """Log generation statistics."""
+        msg = (f"Gen {int(stats.generation):3d} | "
+               f"Best:  {stats.best_fitness:.4f} | "
+               f"Mean: {stats.mean_fitness:.4f}±{stats. std_fitness:.4f} | "
+               f"Diversity:  {stats.diversity:.4f} | "
+               f"Time:  {stats.time:.2f}s")
         
-        if self.config.verbose >= 1:
-            # Standard logging (every 10 generations or first/last)
-            if stats.generation % 10 == 0 or stats.generation == 0 or stats.generation == self.config.num_generations - 1:
-                print_info(
-                    f"Gen {stats.generation:3d} | "
-                    f"Best: {stats.best_fitness:.4f} | "
-                    f"Mean: {stats.mean_fitness:.4f}±{stats.std_fitness:.4f} | "
-                    f"Diversity: {stats.diversity:.4f} | "
-                    f"Time: {stats.total_time:.2f}s"
-                )
-        
-        if self.config.verbose >= 2:
-            # Detailed logging (every generation)
-            self.logger.debug(
-                f"Gen {stats.generation}:  "
-                f"Best={stats.best_fitness:.4f}, "
-                f"Worst={stats.worst_fitness:.4f}, "
-                f"Evals={self.total_evaluations}"
-            )
+        print_info(msg)
     
     def _print_summary(self):
-        """Print final summary."""
-        if not self.logger:
-            return
-        
-        total_time = time.time() - self.start_time
-        
+        """Print optimization summary."""
         print()
         print_header("GA OPTIMIZATION COMPLETE")
         print()
         
         print_success(f"Best fitness: {self.best_individual.fitness:.4f}")
-        print_info(f"Found at generation:  {self.best_individual.generation}")
-        print_info(f"Total generations: {self.generation + 1}")
-        print_info(f"Total evaluations: {self.total_evaluations}")
+        best_gen_idx = max(range(len(self.history)), key=lambda i: self.history[i].best_fitness)
+        print_info(f"Found at generation:  {int(self.history[best_gen_idx].generation)}")
+        print_info(f"Total generations: {len(self.history)}")
+        print_info(f"Total evaluations: {sum(len(self.population) for _ in self.history)}")
+        
+        total_time = sum(stats.time for stats in self.history)
         print_info(f"Total time: {total_time:.2f}s")
-        print_info(f"Avg time per generation: {total_time / (self.generation + 1):.2f}s")
+        print_info(f"Avg time per generation: {total_time/len(self.history):.2f}s")
         
         print()
         print_section("Best Chromosome")
         for gene, value in self.best_individual.chromosome.items():
             print(f"  {gene}:  {value}")
-    
-    # ========================================================================
-    # PERSISTENCE
-    # ========================================================================
-    
-    def save_results(self, filepath: Path):
-        """Save GA results to file."""
-        results = {
-            'config': asdict(self.config),
-            'best_individual': {
-                'chromosome': self.best_individual.chromosome,
-                'fitness': float(self.best_individual.fitness),
-                'generation': int(self.best_individual.generation)
-            },
-            'history': [asdict(stats) for stats in self.history],
-            'total_evaluations': int(self.total_evaluations),
-            'total_time': float(time.time() - self.start_time)
-        }
-        
-        with open(filepath, 'w') as f:
-            json.dump(results, f, indent=2)
-        
-        if self.logger:
-            self.logger.info(f"Results saved to:  {filepath}")
 
 
 # ============================================================================
@@ -669,33 +644,39 @@ if __name__ == '__main__':
     
     logger = get_logger(name="GA_TEST", verbose=True)
     
-    # Simple test:  maximize sum of values
-    def fitness_function(chromosome):
-        """Simple fitness:  sum of all values."""
-        time.sleep(0.01)  # Simulate evaluation time
-        return sum(chromosome.values())
+    # Simple test:  optimize a mathematical function
+    def sphere_function(chromosome:  Dict[str, Any]) -> float:
+        """Sphere function:  minimize sum of squares."""
+        x = chromosome['x']
+        y = chromosome['y']
+        # Return negative (since GA maximizes)
+        return -(x**2 + y**2)
     
     # Chromosome template
     template = {
-        'x1': list(range(10)),
-        'x2': list(range(10)),
-        'x3': list(range(10))
+        'x': (-5.0, 5.0),
+        'y': (-5.0, 5.0)
     }
     
-    # Configuration
+    # GA configuration
     config = GAConfig(
         population_size=20,
-        num_generations=50,
-        crossover_rate=0.8,
-        mutation_rate=0.1,
-        elitism_rate=0.1,
+        num_generations=30,
+        mutation_rate=0.2,
         verbose=1
     )
     
     # Run GA
-    ga = GeneticAlgorithm(config, fitness_function, template, logger)
+    ga = GeneticAlgorithm(
+        config=config,
+        fitness_function=sphere_function,
+        chromosome_template=template,
+        logger=logger
+    )
+    
     best = ga.run()
     
     print()
-    print_success(f"Best solution found: {best.chromosome}")
-    print_info(f"Fitness: {best.fitness}")
+    print_success("✓ GA test complete!")
+    print_info(f"  Best solution: x={best.chromosome['x']:.4f}, y={best.chromosome['y']:. 4f}")
+    print_info(f"  Fitness: {best.fitness:.4f}")

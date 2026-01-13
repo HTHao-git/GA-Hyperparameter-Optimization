@@ -219,6 +219,305 @@ class MultiObjectiveUtils:
         
         return sorted_front[:n_select]
 
+# ============================================================================
+# NSGA-II ALGORITHM
+# ============================================================================
+
+class NSGAII: 
+    """
+    NSGA-II (Non-dominated Sorting Genetic Algorithm II) implementation.
+    
+    Multi-objective optimization using Pareto ranking and crowding distance.
+    
+    Args:
+        population_size: Number of individuals
+        num_generations: Maximum generations
+        objectives: List of objective types ('maximize' or 'minimize')
+        crossover_rate: Crossover probability
+        mutation_rate: Mutation probability
+        random_state: Random seed
+        logger: Logger instance
+    
+    Example:
+        >>> def fitness_func(config):
+        ...     accuracy = train_model(config)
+        ...     speed = 1.0 / training_time
+        ...     return [accuracy, speed]  # Return list of objectives
+        
+        >>> nsga2 = NSGAII(
+        ...     population_size=30,
+        ...     num_generations=20,
+        ...     objectives=['maximize', 'maximize']
+        ... )
+        
+        >>> pareto_front = nsga2.optimize(fitness_func, chromosome_template)
+    """
+    
+    def __init__(self,
+                 population_size: int = 50,
+                 num_generations:  int = 100,
+                 objectives: List[str] = ['maximize', 'maximize'],
+                 crossover_rate: float = 0.8,
+                 mutation_rate: float = 0.1,
+                 random_state: int = 42,
+                 logger: Optional[Logger] = None):
+        
+        self.population_size = population_size
+        self.num_generations = num_generations
+        self. objectives = objectives  # List of 'maximize' or 'minimize'
+        self.crossover_rate = crossover_rate
+        self.mutation_rate = mutation_rate
+        self.random_state = random_state
+        self.logger = logger
+        
+        # Which objectives to minimize
+        self.minimize_objectives = [
+            i for i, obj in enumerate(objectives) if obj == 'minimize'
+        ]
+        
+        # Set random seed
+        np.random.seed(random_state)
+        
+        if self.logger:
+            self.logger.info(f"NSGA-II initialized")
+            self.logger.info(f"  Population:  {population_size}")
+            self.logger.info(f"  Generations: {num_generations}")
+            self.logger.info(f"  Objectives: {len(objectives)}")
+    
+    def optimize(self,
+                 fitness_function:  Callable,
+                 chromosome_template: Dict[str, Any]) -> List[MultiObjectiveIndividual]:
+        """
+        Run NSGA-II optimization.
+        
+        Args:
+            fitness_function: Function that takes config, returns list of objective values
+            chromosome_template:  Hyperparameter search space
+            
+        Returns: 
+            Pareto front (list of non-dominated solutions)
+        """
+        from ga.genetic_algorithm import GeneticAlgorithm
+        
+        # Store template for mutation/crossover
+        self.chromosome_template = chromosome_template
+        self.fitness_function = fitness_function
+        
+        # Initialize population
+        if self.logger:
+            print_info("Initializing population...")
+        
+        population = self._initialize_population()
+        
+        if self.logger:
+            print_success(f"Population initialized:  {len(population)} individuals")
+        
+        # Evaluate initial population
+        self._evaluate_population(population)
+        
+        # Evolution loop
+        for generation in range(self.num_generations):
+            import time
+            gen_start = time.time()
+            
+            # Create offspring
+            offspring = self._create_offspring(population)
+            
+            # Evaluate offspring
+            self._evaluate_population(offspring)
+            
+            # Combine parent and offspring
+            combined = population + offspring
+            
+            # Non-dominated sorting
+            fronts = MultiObjectiveUtils.fast_non_dominated_sort(
+                combined, 
+                minimize=[f"obj_{i}" for i in self.minimize_objectives]
+            )
+            
+            # Calculate crowding distance for each front
+            for front in fronts:
+                MultiObjectiveUtils.calculate_crowding_distance(
+                    front,
+                    minimize=[f"obj_{i}" for i in self.minimize_objectives]
+                )
+            
+            # Select next generation
+            population = self._environmental_selection(fronts)
+            
+            gen_time = time.time() - gen_start
+            
+            # Logging
+            if self.logger:
+                best_front = fronts[0]
+                avg_objectives = {
+                    f"obj_{i}": np.mean([ind. objectives[f"obj_{i}"] for ind in best_front])
+                    for i in range(len(self.objectives))
+                }
+                
+                obj_str = ", ".join([f"{v:.4f}" for v in avg_objectives.values()])
+                
+                print_info(f"Gen {generation: 3d} | Pareto size: {len(best_front):3d} | "
+                          f"Avg objectives: [{obj_str}] | Time: {gen_time:.2f}s")
+        
+        # Return final Pareto front
+        final_fronts = MultiObjectiveUtils.fast_non_dominated_sort(
+            population,
+            minimize=[f"obj_{i}" for i in self.minimize_objectives]
+        )
+        
+        pareto_front = final_fronts[0] if final_fronts else []
+        
+        if self.logger:
+            print()
+            print_success(f"✓ NSGA-II complete!")
+            print_info(f"  Pareto front size: {len(pareto_front)}")
+        
+        return pareto_front
+    
+    def _initialize_population(self) -> List[MultiObjectiveIndividual]: 
+        """Initialize random population."""
+        from ga.genetic_algorithm import GeneticAlgorithm, GAConfig
+        
+        # Create temporary GA config
+        temp_config = GAConfig(
+            population_size=self.population_size,
+            random_state=self.random_state
+        )
+        
+        # Create temporary GA instance to use its initialization
+        temp_ga = GeneticAlgorithm(
+            config=temp_config,
+            fitness_function=lambda x: 0.0,
+            chromosome_template=self.chromosome_template,
+            logger=None
+        )
+        
+        population = []
+        for _ in range(self.population_size):
+            # Use GA's initialization method
+            individual = temp_ga._initialize_individual()
+            
+            # Convert to MultiObjectiveIndividual
+            mo_individual = MultiObjectiveIndividual(
+                chromosome=individual. chromosome,
+                evaluated=False
+            )
+            population.append(mo_individual)
+        
+        return population
+    
+    def _evaluate_population(self, population: List[MultiObjectiveIndividual]):
+        """Evaluate all unevaluated individuals."""
+        for individual in population:
+            if not individual.evaluated:
+                # Get objective values
+                objective_values = self.fitness_function(individual.chromosome)
+                
+                # Store as dictionary
+                individual.objectives = {
+                    f"obj_{i}": float(val)
+                    for i, val in enumerate(objective_values)
+                }
+                
+                # Also store in fitness for compatibility
+                individual.fitness = objective_values
+                individual.evaluated = True
+    
+    def _create_offspring(self, population: List[MultiObjectiveIndividual]) -> List[MultiObjectiveIndividual]:
+        """Create offspring through tournament selection, crossover, and mutation."""
+        offspring = []
+        
+        while len(offspring) < self.population_size:
+            # Tournament selection
+            parent1 = self._tournament_selection(population)
+            parent2 = self._tournament_selection(population)
+            
+            # Crossover
+            if np.random.random() < self.crossover_rate:
+                child1_chromo, child2_chromo = self._crossover(parent1.chromosome, parent2.chromosome)
+            else:
+                child1_chromo = parent1.chromosome. copy()
+                child2_chromo = parent2.chromosome.copy()
+            
+            # Mutation
+            if np.random.random() < self.mutation_rate:
+                child1_chromo = self._mutate(child1_chromo)
+            if np.random.random() < self.mutation_rate:
+                child2_chromo = self._mutate(child2_chromo)
+            
+            # Create offspring individuals
+            offspring.append(MultiObjectiveIndividual(chromosome=child1_chromo, evaluated=False))
+            if len(offspring) < self.population_size:
+                offspring.append(MultiObjectiveIndividual(chromosome=child2_chromo, evaluated=False))
+        
+        return offspring[: self.population_size]
+    
+    def _tournament_selection(self, population: List[MultiObjectiveIndividual], 
+                              tournament_size: int = 2) -> MultiObjectiveIndividual:
+        """Binary tournament selection based on rank and crowding distance."""
+        # Select random individuals
+        candidates = np.random.choice(population, size=tournament_size, replace=False)
+        
+        # Compare based on rank first, then crowding distance
+        best = candidates[0]
+        for candidate in candidates[1:]:
+            if candidate.rank < best.rank:
+                best = candidate
+            elif candidate.rank == best.rank and candidate.crowding_distance > best.crowding_distance:
+                best = candidate
+        
+        return best
+    
+    def _crossover(self, parent1: Dict, parent2: Dict) -> Tuple[Dict, Dict]:
+        """Uniform crossover."""
+        child1 = {}
+        child2 = {}
+        
+        for gene in parent1.keys():
+            if np.random.random() < 0.5:
+                child1[gene] = parent1[gene]
+                child2[gene] = parent2[gene]
+            else: 
+                child1[gene] = parent2[gene]
+                child2[gene] = parent1[gene]
+        
+        return child1, child2
+    
+    def _mutate(self, chromosome:  Dict) -> Dict:
+        """Mutate chromosome."""
+        mutated = chromosome.copy()
+        
+        for gene, value in mutated.items():
+            if np.random.random() < 0.3:  # 30% chance per gene
+                possible_values = self. chromosome_template[gene]
+                
+                if isinstance(possible_values, tuple) and len(possible_values) == 2:
+                    # Continuous range
+                    low, high = possible_values
+                    mutated[gene] = np.random.uniform(low, high)
+                elif isinstance(possible_values, list):
+                    # Discrete values
+                    mutated[gene] = np.random.choice(possible_values)
+        
+        return mutated
+    
+    def _environmental_selection(self, fronts: List[List[MultiObjectiveIndividual]]) -> List[MultiObjectiveIndividual]:
+        """Select next generation from fronts."""
+        next_population = []
+        
+        for front in fronts:
+            if len(next_population) + len(front) <= self.population_size:
+                # Add entire front
+                next_population.extend(front)
+            else:
+                # Add part of front based on crowding distance
+                remaining = self.population_size - len(next_population)
+                selected = MultiObjectiveUtils.crowding_distance_selection(front, remaining)
+                next_population.extend(selected)
+                break
+        
+        return next_population[: self.population_size]
 
 # ============================================================================
 # EXAMPLE USAGE
