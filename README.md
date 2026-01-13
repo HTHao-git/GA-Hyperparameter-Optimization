@@ -100,7 +100,7 @@ This project implements a **production-ready Genetic Algorithm framework** for a
 ### **1. Clone Repository**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/GA-Hyperparameter-Optimization.git
+git clone https://github.com/HTHao-git/GA-Hyperparameter-Optimization.git
 cd GA-Hyperparameter-Optimization
 ```
 
