@@ -447,7 +447,7 @@ def print_chromosome_info(hyperparameter_config: Dict[str, Any]):
     info = get_chromosome_info(hyperparameter_config)
     
     print("\n" + "="*70)
-    print("🧬 CHROMOSOME STRUCTURE")
+    print(" CHROMOSOME STRUCTURE")
     print("="*70)
     print(f"Chromosome Length: {info['chromosome_length']} genes")
     print(f"Model Type: {hyperparameter_config.get('model_type', 'Unknown')}")
@@ -488,7 +488,7 @@ def print_chromosome_info(hyperparameter_config: Dict[str, Any]):
 # ============================================================================
 
 if __name__ == '__main__':
-    print("🧬 Testing Chromosome Utilities")
+    print(" Testing Chromosome Utilities")
     print("="*70)
     
     # Load configuration
@@ -502,7 +502,7 @@ if __name__ == '__main__':
             'model_type': config['hyperparameter_metadata']['model_type']
         }
         
-        print("\n✅ Configuration loaded")
+        print("\n Configuration loaded")
         
         # Print chromosome structure
         print_chromosome_info(hyperparam_config)
@@ -513,7 +513,7 @@ if __name__ == '__main__':
         print("="*70)
         
         chromosome = initialize_random_chromosome(hyperparam_config, random_state=42)
-        print(f"✅ Random chromosome generated (length: {len(chromosome)})")
+        print(f" Random chromosome generated (length: {len(chromosome)})")
         print(f"Chromosome: {[f'{g:.4f}' for g in chromosome]}")
         
         # Test 2: Decode chromosome
@@ -522,7 +522,7 @@ if __name__ == '__main__':
         print("="*70)
         
         decoded = decode_chromosome(chromosome, hyperparam_config)
-        print("✅ Chromosome decoded to hyperparameters:")
+        print(" Chromosome decoded to hyperparameters:")
         for key, value in decoded.items():
             print(f"   {key}: {value}")
         
@@ -532,7 +532,7 @@ if __name__ == '__main__':
         print("="*70)
         
         re_encoded = encode_hyperparameters(decoded, hyperparam_config)
-        print(f"✅ Hyperparameters re-encoded")
+        print(f" Hyperparameters re-encoded")
         print(f"Re-encoded:  {[f'{g:.4f}' for g in re_encoded]}")
         
         # Check if encoding is reversible
@@ -540,9 +540,9 @@ if __name__ == '__main__':
         print(f"\nMax difference after encode/decode cycle: {max_diff:.10f}")
         
         if max_diff < 1e-6:
-            print("✅ Encoding is reversible (within floating point precision)")
+            print(" Encoding is reversible (within floating point precision)")
         else:
-            print("⚠️  Warning: Encoding may not be perfectly reversible")
+            print("  Warning: Encoding may not be perfectly reversible")
         
         # Test 4: Initialize population
         print("\n" + "="*70)
@@ -550,7 +550,7 @@ if __name__ == '__main__':
         print("="*70)
         
         population = initialize_population(5, hyperparam_config, random_state=42)
-        print(f"✅ Population of {len(population)} individuals created")
+        print(f" Population of {len(population)} individuals created")
         
         for i, individual in enumerate(population):
             print(f"\nIndividual {i}:")
@@ -566,7 +566,7 @@ if __name__ == '__main__':
         print("="*70)
         
         validate_chromosome(chromosome, hyperparam_config)
-        print("✅ Chromosome is valid")
+        print(" Chromosome is valid")
         
         # Test invalid chromosome
         invalid_chromosome = chromosome.copy()
@@ -574,15 +574,15 @@ if __name__ == '__main__':
         
         try: 
             validate_chromosome(invalid_chromosome, hyperparam_config)
-            print("❌ Should have raised ValueError for invalid chromosome")
+            print(" Should have raised ValueError for invalid chromosome")
         except ValueError as e:
             print(f"✅ Correctly rejected invalid chromosome: {e}")
         
         print("\n" + "="*70)
-        print("🎉 ALL TESTS PASSED!")
+        print(" ALL TESTS PASSED!")
         print("="*70)
         
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n Error: {e}")
         import traceback
         traceback.print_exc()

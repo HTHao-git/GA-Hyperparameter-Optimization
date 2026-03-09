@@ -159,7 +159,7 @@ class ReportGenerator:
     </div>
     
     <div class="section">
-        <h2>📊 Dataset Information</h2>
+        <h2>Dataset Information</h2>
         <table>
             <tr><th>Property</th><th>Value</th></tr>
             <tr><td>Dataset</td><td>{dataset_info.get('name', 'N/A')}</td></tr>
@@ -171,7 +171,7 @@ class ReportGenerator:
     </div>
     
     <div class="section">
-        <h2>🏆 Model Performance Comparison</h2>
+        <h2>Model Performance Comparison</h2>
         {self._generate_performance_table(model_results)}
     </div>
 """
@@ -180,7 +180,7 @@ class ReportGenerator:
         if statistical_results: 
             html_content += f"""
     <div class="section">
-        <h2>📈 Statistical Significance</h2>
+        <h2>Statistical Significance</h2>
         {self._generate_statistical_table(statistical_results)}
     </div>
 """
@@ -189,7 +189,7 @@ class ReportGenerator:
         if plots:
             html_content += """
     <div class="section">
-        <h2>📉 Visualizations</h2>
+        <h2>Visualizations</h2>
 """
             for plot_name, plot_path in plots.items():
                 # Make path relative
@@ -205,7 +205,7 @@ class ReportGenerator:
         # Add model configurations
         html_content += """
     <div class="section">
-        <h2>⚙️ Best Configurations</h2>
+        <h2>Best Configurations</h2>
 """
         for model_name, results in model_results.items():
             if 'config' in results:

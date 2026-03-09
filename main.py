@@ -47,7 +47,7 @@ RUN_EXPERIMENTS = {
 # ----------------------------------------------------------------------------
 
 DATASET_CONFIG = {
-    'name': 'isolet',  # Options: 'secom', 'fashion_mnist', 'isolet', 'steel_plates'
+    'name': 'secom',  # Options: 'secom', 'fashion_mnist', 'isolet', 'steel_plates'
     'test_size': 0.2,
     'random_state': 42
 }
@@ -104,7 +104,7 @@ GA_CONFIG = {
     'adaptive_method': 'diversity_based',  # 'diversity_based', 'fitness_based', 'schedule'
     
     # Early Stopping
-    'early_stopping':  True,      # Stop if no improvement
+    'early_stopping': True,      # Stop if no improvement
     'patience': 8,               # Generations to wait
     'diversity_threshold': 0.0,  # Min diversity (0.0 = disabled)
     

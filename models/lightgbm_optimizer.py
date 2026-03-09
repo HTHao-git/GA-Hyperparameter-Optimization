@@ -370,7 +370,7 @@ class LightGBMOptimizer:
         
         # 3. Balance classes (only for training)
         if fit:
-            smote_strategy = config.get('smote_strategy', 'none')
+            smote_strategy = config.get('smote_strategy', 'smote')
             
             if smote_strategy != 'none':
                 smote_handler = SMOTEHandler(

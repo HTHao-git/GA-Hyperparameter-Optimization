@@ -62,7 +62,8 @@ class CrossoverOperator:
             'two_point',
             'arithmetic',
             'sbx',
-            'pmx'
+            'pmx',
+            'blend'
         ]
         
         if method not in self.valid_methods:
@@ -110,6 +111,11 @@ class CrossoverOperator:
                 raise ValueError("SBX requires chromosome_template")
             return self._sbx_crossover(parent1, parent2, chromosome_template)
         
+        elif self.method == 'blend':
+            if chromosome_template is None:
+                raise ValueError("Blend crossover requires chromosome_template")
+            return self._blend_crossover(parent1, parent2, chromosome_template)
+
         elif self.method == 'pmx':
             return self._pmx_crossover(parent1, parent2)
         
@@ -146,6 +152,91 @@ class CrossoverOperator:
             else: 
                 child1[gene] = parent2[gene]
                 child2[gene] = parent1[gene]
+        
+        return child1, child2
+    
+        # ========================================================================
+    # BLEND CROSSOVER (BLX-α)
+    # ========================================================================
+    
+    def _blend_crossover(self, 
+                         parent1: Dict[str, Any], 
+                         parent2: Dict[str, Any],
+                         chromosome_template: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """
+        Blend crossover (BLX-α): For mixed gene types.
+        
+        For continuous genes:
+        - Uses true Blend-α (BLX-α) algorithm
+        - Extends the range by alpha * distance
+        - Samples offspring from extended range
+        
+        For discrete/categorical genes:
+        - Uses uniform crossover
+        
+        Good for:
+        - Mixed-type hyperparameter optimization
+        - Exploration in continuous spaces
+        - Maintaining diversity
+        
+        Args:
+            parent1, parent2: Parent chromosomes
+            chromosome_template: Template with gene types/bounds
+            
+        Returns:
+            Two offspring
+        """
+        child1 = {}
+        child2 = {}
+        
+        for gene in parent1.keys():
+            val1 = parent1[gene]
+            val2 = parent2[gene]
+            
+            # Get gene specification from template
+            gene_spec = chromosome_template.get(gene)
+            
+            # Check if continuous (tuple with 2 elements representing bounds)
+            if isinstance(gene_spec, tuple) and len(gene_spec) == 2:
+                low, high = gene_spec
+                
+                # Check if it's a continuous parameter (float bounds)
+                if isinstance(val1, (float, np.number)) and isinstance(val2, (float, np.number)):
+                    # True Blend-α (BLX-α) for continuous genes
+                    p1_val = float(val1)
+                    p2_val = float(val2)
+                    
+                    # Calculate interval and extended range
+                    d = abs(p2_val - p1_val)
+                    min_val = min(p1_val, p2_val) - self.alpha * d
+                    max_val = max(p1_val, p2_val) + self.alpha * d
+                    
+                    # Sample offspring from extended range
+                    gene1 = np.random.uniform(min_val, max_val)
+                    gene2 = np.random.uniform(min_val, max_val)
+                    
+                    # Clip to valid hyperparameter bounds
+                    gene1 = float(np.clip(gene1, low, high))
+                    gene2 = float(np.clip(gene2, low, high))
+                    
+                    child1[gene] = gene1
+                    child2[gene] = gene2
+                else:
+                    # Discrete gene - uniform crossover
+                    if np.random.random() < 0.5:
+                        child1[gene] = val1
+                        child2[gene] = val2
+                    else:
+                        child1[gene] = val2
+                        child2[gene] = val1
+            else:
+                # Categorical gene (list of choices) - uniform crossover
+                if np.random.random() < 0.5:
+                    child1[gene] = val1
+                    child2[gene] = val2
+                else:
+                    child1[gene] = val2
+                    child2[gene] = val1
         
         return child1, child2
     
@@ -429,7 +520,7 @@ if __name__ == '__main__':
         'x4': (50, 500)
     }
     
-    methods = ['uniform', 'single_point', 'two_point', 'arithmetic', 'sbx']
+    methods = ['uniform', 'single_point', 'two_point', 'arithmetic', 'sbx', 'blend']
     
     for method in methods:
         print_section(f"Method: {method.upper()}")

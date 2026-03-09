@@ -482,7 +482,7 @@ def main():
     
     # Highlight key finding
     if results_before['minority_recall'] < 0.1 and results_after['minority_recall'] > 0.3:
-        print_success("🎯 KEY FINDING: F1-based optimization dramatically improved minority class detection!")
+        print_success(" KEY FINDING: F1-based optimization dramatically improved minority class detection!")
         print_info(f"   Minority recall improved from {results_before['minority_recall']*100:.1f}% to {results_after['minority_recall']*100:.1f}%")
     
     print()

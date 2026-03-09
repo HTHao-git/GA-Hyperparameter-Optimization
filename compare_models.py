@@ -352,12 +352,12 @@ def main():
         diff = 0
     
     if winner != 'Tie':
-        print_success(f"🏆 Winner: {winner} (+{diff:.4f} or +{diff*100:.2f}%)")
+        print_success(f"Winner: {winner} (+{diff:.4f} or +{diff*100:.2f}%)")
     else:
-        print_info("🤝 Performance is identical")
+        print_info("Performance is identical")
     
     print()
-    print_info("📁 Output Files:")
+    print_info("Output Files:")
     print(f"  - HTML Report:   {html_path}")
     print(f"  - Text Report:  {text_path}")
     print(f"  - Statistical Results: {stats_path}")

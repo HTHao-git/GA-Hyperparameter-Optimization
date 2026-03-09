@@ -380,6 +380,6 @@ if __name__ == '__main__':
         print("\nConfig loader test passed!")
         
     except Exception as e: 
-        print(f"\n❌ Error:  {e}")
+        print(f"\nError:  {e}")
         import traceback
         traceback.print_exc()
